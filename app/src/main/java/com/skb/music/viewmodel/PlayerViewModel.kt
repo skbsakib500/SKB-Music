@@ -6,13 +6,14 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
-import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
 import com.skb.music.SkbApplication
 import com.skb.music.data.Song
+import com.skb.music.data.toMediaItem
+import com.skb.music.data.toSong
 import com.skb.music.playback.PlaybackService
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -27,8 +28,6 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
 
     private var controllerFuture: ListenableFuture<MediaController>? = null
     private var controller: MediaController? = null
-
-    private var queue: List<Song> = emptyList()
 
     private val _currentSong = MutableStateFlow<Song?>(null)
     val currentSong: StateFlow<Song?> = _currentSong.asStateFlow()
@@ -70,10 +69,11 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         }
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-            val id = mediaItem?.mediaId?.toLongOrNull() ?: return
-            _currentSong.value = queue.firstOrNull { it.id == id }
-            _currentSong.value?.let { song ->
-                viewModelScope.launch { repo.markPlayed(song.id) }
+            val c = controller
+            val song = mediaItem?.toSong(c?.duration?.coerceAtLeast(0L) ?: 0L)
+            _currentSong.value = song
+            song?.let { s ->
+                viewModelScope.launch { repo.markPlayed(s.id) }
             }
             syncFromController()
         }
@@ -111,20 +111,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
 
     fun playSongs(songs: List<Song>, startIndex: Int = 0) {
         if (songs.isEmpty()) return
-        queue = songs
-        val items = songs.map { song ->
-            MediaItem.Builder()
-                .setMediaId(song.id.toString())
-                .setUri(song.uri)
-                .setMediaMetadata(
-                    MediaMetadata.Builder()
-                        .setTitle(song.title)
-                        .setArtist(song.artist)
-                        .setAlbumTitle(song.album)
-                        .setArtworkUri(song.albumArtUri)
-                        .build()
-                ).build()
-        }
+        val items = songs.map { it.toMediaItem() }
         controller?.apply {
             setMediaItems(items, startIndex, 0L)
             prepare()
@@ -152,6 +139,16 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
             else -> Player.REPEAT_MODE_OFF
         }
+    }
+
+    fun playNext(song: Song) {
+        val c = controller ?: return
+        val insertAt = c.currentMediaItemIndex + 1
+        c.addMediaItem(insertAt, song.toMediaItem())
+    }
+
+    fun addToQueue(song: Song) {
+        controller?.addMediaItem(song.toMediaItem())
     }
 
     override fun onCleared() {

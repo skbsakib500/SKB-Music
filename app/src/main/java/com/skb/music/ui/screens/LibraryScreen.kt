@@ -33,9 +33,7 @@ fun LibraryScreen(
 
     val favoriteIds = remember(favorites) { favorites.map { it.id }.toHashSet() }
 
-    Column(
-        modifier = Modifier.fillMaxSize().background(Color.Black)
-    ) {
+    Column(Modifier.fillMaxSize().background(Color.Black)) {
         OutlinedTextField(
             value = query,
             onValueChange = libraryVm::setQuery,
@@ -79,9 +77,8 @@ fun LibraryScreen(
                             song = song,
                             isPlaying = current?.id == song.id,
                             isFavorite = favoriteIds.contains(song.id),
-                            onClick = {
-                                playerVm.playSongs(songs, songs.indexOf(song))
-                            },
+                            onClick = { playerVm.playSongs(songs, songs.indexOf(song)) },
+                            onLongClick = { onSongMenu(song) },
                             onFavoriteToggle = {
                                 libraryVm.toggleFavorite(song.id, favoriteIds.contains(song.id))
                             },

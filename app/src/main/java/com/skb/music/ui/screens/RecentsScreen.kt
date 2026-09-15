@@ -20,37 +20,37 @@ import com.skb.music.viewmodel.LibraryViewModel
 import com.skb.music.viewmodel.PlayerViewModel
 
 @Composable
-fun FavoritesScreen(
+fun RecentsScreen(
     libraryVm: LibraryViewModel,
     playerVm: PlayerViewModel,
     onSongMenu: (Song) -> Unit
 ) {
-    val favorites by libraryVm.favorites.collectAsStateWithLifecycle()
+    val recents by libraryVm.recents.collectAsStateWithLifecycle()
     val current by playerVm.currentSong.collectAsStateWithLifecycle()
 
     Column(Modifier.fillMaxSize().background(Color.Black)) {
-        if (favorites.isEmpty()) {
+        if (recents.isEmpty()) {
             Box(Modifier.fillMaxSize(), Alignment.Center) {
-                Text("No favorites yet", color = Color.Gray)
+                Text("Nothing played yet", color = Color.Gray)
             }
         } else {
             LazyColumn(Modifier.fillMaxSize()) {
                 item {
                     Text(
-                        "FAVORITES - ${favorites.size}",
+                        "RECENTLY PLAYED - ${recents.size}",
                         color = Color.Gray,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(16.dp)
                     )
                 }
-                items(favorites, key = { it.id }) { song ->
+                items(recents, key = { it.id }) { song ->
                     SongRow(
                         song = song,
                         isPlaying = current?.id == song.id,
-                        isFavorite = true,
-                        onClick = { playerVm.playSongs(favorites, favorites.indexOf(song)) },
+                        isFavorite = false,
+                        onClick = { playerVm.playSongs(recents, recents.indexOf(song)) },
                         onLongClick = { onSongMenu(song) },
-                        onFavoriteToggle = { libraryVm.toggleFavorite(song.id, true) },
+                        onFavoriteToggle = { },
                         onMenu = { onSongMenu(song) }
                     )
                     HorizontalDivider(color = Color(0xFF1A1A1A))

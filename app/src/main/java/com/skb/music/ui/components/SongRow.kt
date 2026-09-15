@@ -1,7 +1,8 @@
 package com.skb.music.ui.components
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -21,12 +22,14 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.skb.music.data.Song
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SongRow(
     song: Song,
     isPlaying: Boolean,
     isFavorite: Boolean,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
     onFavoriteToggle: () -> Unit,
     onMenu: () -> Unit
 ) {
@@ -34,7 +37,10 @@ fun SongRow(
         modifier = Modifier
             .fillMaxWidth()
             .background(Color.Black)
-            .clickable(onClick = onClick)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            )
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

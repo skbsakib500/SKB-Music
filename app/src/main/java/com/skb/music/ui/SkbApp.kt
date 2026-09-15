@@ -1,5 +1,6 @@
 package com.skb.music.ui
 
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -13,20 +14,24 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.skb.music.data.Song
+import com.skb.music.ui.components.SongInfoDialog
+import com.skb.music.ui.components.SongMenuSheet
 import com.skb.music.ui.screens.FavoritesScreen
 import com.skb.music.ui.screens.LibraryScreen
 import com.skb.music.ui.screens.NowPlayingScreen
 import com.skb.music.ui.screens.PlaylistsScreen
+import com.skb.music.ui.screens.RecentsScreen
 import com.skb.music.viewmodel.LibraryViewModel
 import com.skb.music.viewmodel.PlayerViewModel
 
-private enum class Tab { Songs, Favorites, Playlists }
+private enum class Tab { Songs, Recents, Favorites, Playlists }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,9 +39,13 @@ fun SkbApp(
     libraryVm: LibraryViewModel,
     playerVm: PlayerViewModel = viewModel()
 ) {
+    val ctx = LocalContext.current
+
     var tab by remember { mutableStateOf(Tab.Songs) }
     var showNowPlaying by remember { mutableStateOf(false) }
     var songMenuFor by remember { mutableStateOf<Song?>(null) }
+    var playlistForSong by remember { mutableStateOf<Song?>(null) }
+    var infoForSong by remember { mutableStateOf<Song?>(null) }
 
     val current by playerVm.currentSong.collectAsStateWithLifecycle()
     val isPlaying by playerVm.isPlaying.collectAsStateWithLifecycle()
@@ -72,6 +81,12 @@ fun SkbApp(
                         label = { Text("Songs") }
                     )
                     NavigationBarItem(
+                        selected = tab == Tab.Recents,
+                        onClick = { tab = Tab.Recents },
+                        icon = { Icon(Icons.Default.History, null) },
+                        label = { Text("Recents") }
+                    )
+                    NavigationBarItem(
                         selected = tab == Tab.Favorites,
                         onClick = { tab = Tab.Favorites },
                         icon = { Icon(Icons.Default.Favorite, null) },
@@ -100,7 +115,16 @@ fun SkbApp(
                     playerVm = playerVm,
                     onSongMenu = { songMenuFor = it }
                 )
-                Tab.Favorites -> FavoritesScreen(libraryVm, playerVm)
+                Tab.Recents -> RecentsScreen(
+                    libraryVm = libraryVm,
+                    playerVm = playerVm,
+                    onSongMenu = { songMenuFor = it }
+                )
+                Tab.Favorites -> FavoritesScreen(
+                    libraryVm = libraryVm,
+                    playerVm = playerVm,
+                    onSongMenu = { songMenuFor = it }
+                )
                 Tab.Playlists -> PlaylistsScreen(libraryVm)
             }
         }
@@ -114,12 +138,44 @@ fun SkbApp(
         NowPlayingScreen(playerVm = playerVm, onClose = { showNowPlaying = false })
     }
 
+    // ---- Long-press menu ----
     songMenuFor?.let { song ->
+        SongMenuSheet(
+            song = song,
+            onDismiss = { songMenuFor = null },
+            onPlayNext = {
+                playerVm.playNext(song)
+                songMenuFor = null
+                Toast.makeText(ctx, "Playing next: ${song.title}", Toast.LENGTH_SHORT).show()
+            },
+            onAddToQueue = {
+                playerVm.addToQueue(song)
+                songMenuFor = null
+                Toast.makeText(ctx, "Added to queue", Toast.LENGTH_SHORT).show()
+            },
+            onAddToPlaylist = {
+                playlistForSong = song
+                songMenuFor = null
+            },
+            onShowInfo = {
+                infoForSong = song
+                songMenuFor = null
+            }
+        )
+    }
+
+    // ---- Add to playlist sheet ----
+    playlistForSong?.let { song ->
         AddToPlaylistSheet(
             song = song,
             libraryVm = libraryVm,
-            onDismiss = { songMenuFor = null }
+            onDismiss = { playlistForSong = null }
         )
+    }
+
+    // ---- Song info dialog ----
+    infoForSong?.let { song ->
+        SongInfoDialog(song = song, onDismiss = { infoForSong = null })
     }
 }
 
