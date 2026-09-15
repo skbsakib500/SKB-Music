@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -31,7 +32,12 @@ fun StatsScreen(libraryVm: LibraryViewModel) {
             .background(Color.Black)
             .padding(16.dp)
     ) {
-        Text("Listening Stats", color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Text(
+            "Listening Stats",
+            color = Color.White,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
+        )
         Spacer(Modifier.height(16.dp))
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -86,7 +92,12 @@ private fun StatCard(label: String, value: String, modifier: Modifier = Modifier
         Column(Modifier.padding(16.dp)) {
             Text(label, color = Color.Gray, style = MaterialTheme.typography.labelMedium)
             Spacer(Modifier.height(6.dp))
-            Text(value, color = Color(0xFF1DB954), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text(
+                value,
+                color = Color(0xFF1DB954),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
@@ -97,6 +108,3 @@ private fun formatMs(ms: Long): String {
     val m = totalMin % 60
     return if (h > 0) "${h}h ${m}m" else "${m}m"
 }
-
-private fun <T> remember(key: Any?, calc: () -> T): T =
-    androidx.compose.runtime.remember(key) { calc() }

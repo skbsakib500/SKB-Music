@@ -7,7 +7,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
-import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
@@ -95,7 +94,6 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         }
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-            // Finalize previous
             flushListenTime()
 
             val c = controller
@@ -135,13 +133,12 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun applyReplayGain(item: MediaItem?) {
         val c = controller ?: return
-        val exo = c.player as? ExoPlayer ?: return
         viewModelScope.launch {
             val s = EqPreferences.load(appCtx)
             if (s.replayGainEnabled) {
-                ReplayGainManager.apply(exo, item, true, s.replayGainTargetDb, s.replayGainMaxBoostDb)
+                ReplayGainManager.apply(c, item, true, s.replayGainTargetDb, s.replayGainMaxBoostDb)
             } else {
-                exo.volume = 1f
+                c.volume = 1f
             }
         }
     }
@@ -200,8 +197,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     private fun startVisualizerIfNeeded() {
         stopVisualizer()
         val c = controller ?: return
-        val exo = c.player as? ExoPlayer ?: return
-        val sessionId = exo.audioSessionId
+        val sessionId = c.audioSessionId
         if (sessionId <= 0) return
 
         visualizerJob = viewModelScope.launch {
@@ -236,7 +232,6 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                             samplingRate: Int
                         ) {
                             if (fft == null || fft.size < 6) return
-                            // Approximate: split into 3 bands
                             val n = fft.size / 2
                             var low = 0.0
                             var mid = 0.0
