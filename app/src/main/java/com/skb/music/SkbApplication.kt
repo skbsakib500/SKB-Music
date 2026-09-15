@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.os.Build
 import com.skb.music.core.Constants
 import com.skb.music.data.MusicRepository
+import com.skb.music.equalizer.AudioEffectsManager
 
 class SkbApplication : Application() {
 
@@ -15,6 +16,7 @@ class SkbApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         repository = MusicRepository(this)
+        AudioEffectsManager.init(this)
         createChannel()
     }
 

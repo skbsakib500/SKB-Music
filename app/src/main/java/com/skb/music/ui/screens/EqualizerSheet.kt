@@ -19,6 +19,7 @@ fun EqualizerSheet(onDismiss: () -> Unit) {
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
+    val ready by AudioEffectsManager.ready.collectAsStateWithLifecycle()
     val available by AudioEffectsManager.available.collectAsStateWithLifecycle()
     val enabled by AudioEffectsManager.enabled.collectAsStateWithLifecycle()
     val bandLevels by AudioEffectsManager.bandLevels.collectAsStateWithLifecycle()
@@ -65,6 +66,15 @@ fun EqualizerSheet(onDismiss: () -> Unit) {
             }
 
             Spacer(Modifier.height(12.dp))
+
+            if (!ready) {
+                Text(
+                    "Loading settings...",
+                    color = Color.Gray,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                return@Column
+            }
 
             if (!available) {
                 Text(

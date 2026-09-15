@@ -56,7 +56,7 @@ class PlaybackService : MediaSessionService() {
             release()
             mediaSession = null
         }
-        AudioEffectsManager.release()
+        AudioEffectsManager.release(clearSession = true)
         super.onDestroy()
     }
 }

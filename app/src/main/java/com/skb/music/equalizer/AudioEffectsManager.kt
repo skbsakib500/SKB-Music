@@ -1,14 +1,23 @@
 package com.skb.music.equalizer
 
+import android.content.Context
 import android.media.audiofx.BassBoost
 import android.media.audiofx.Equalizer
 import android.media.audiofx.LoudnessEnhancer
 import android.media.audiofx.Virtualizer
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 object AudioEffectsManager {
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    private var appContext: Context? = null
 
     private var equalizer: Equalizer? = null
     private var bassBoost: BassBoost? = null
@@ -16,6 +25,7 @@ object AudioEffectsManager {
     private var loudness: LoudnessEnhancer? = null
 
     private var currentSessionId: Int = -1
+    private var pendingSettings: EqSettings? = null
 
     private val _available = MutableStateFlow(false)
     val available: StateFlow<Boolean> = _available.asStateFlow()
@@ -47,14 +57,25 @@ object AudioEffectsManager {
     private val _loudnessGainMb = MutableStateFlow(0)
     val loudnessGainMb: StateFlow<Int> = _loudnessGainMb.asStateFlow()
 
+    private val _ready = MutableStateFlow(false)
+    val ready: StateFlow<Boolean> = _ready.asStateFlow()
+
+    fun init(context: Context) {
+        appContext = context.applicationContext
+        scope.launch {
+            pendingSettings = EqPreferences.load(context.applicationContext)
+            _ready.value = true
+            currentSessionId.takeIf { it > 0 }?.let { tryApplyPending() }
+        }
+    }
+
     fun attach(sessionId: Int) {
         if (sessionId <= 0) return
         if (sessionId == currentSessionId && equalizer != null) return
-        release()
+        release(false)
         currentSessionId = sessionId
         try {
             val eq = Equalizer(0, sessionId)
-            eq.enabled = true
             equalizer = eq
 
             bassBoost = BassBoost(0, sessionId)
@@ -72,14 +93,73 @@ object AudioEffectsManager {
             _presetNames.value = (0 until eq.numberOfPresets.toInt()).map {
                 eq.getPresetName(it.toShort()).toString()
             }
-            _enabled.value = true
             _available.value = true
+
+            tryApplyPending()
         } catch (e: Exception) {
-            release()
+            release(false)
         }
     }
 
-    fun release() {
+    private fun tryApplyPending() {
+        val settings = pendingSettings ?: return
+        val eq = equalizer ?: return
+        try {
+            if (settings.bandLevelsCsv.isNotBlank()) {
+                val saved = EqPreferences.parseBands(settings.bandLevelsCsv)
+                val numBands = eq.numberOfBands.toInt()
+                if (saved.size == numBands) {
+                    val range = eq.bandLevelRange
+                    saved.forEachIndexed { i, lvl ->
+                        val clamped = lvl
+                            .coerceAtLeast(range[0])
+                            .coerceAtMost(range[1])
+                        eq.setBandLevel(i.toShort(), clamped)
+                    }
+                    _bandLevels.value = (0 until numBands).map { eq.getBandLevel(it.toShort()) }
+                    _preset.value = settings.preset
+                } else {
+                    applyPreset(settings.preset)
+                }
+            } else {
+                applyPreset(settings.preset)
+            }
+
+            bassBoost?.let {
+                val s = settings.bass.coerceIn(0, 1000).toShort()
+                it.setStrength(s)
+                it.enabled = s > 0
+                _bassStrength.value = s.toInt()
+            }
+            virtualizer?.let {
+                val s = settings.virtualizer.coerceIn(0, 1000).toShort()
+                it.setStrength(s)
+                it.enabled = s > 0
+                _virtualizerStrength.value = s.toInt()
+            }
+            loudness?.let {
+                val g = settings.loudness.coerceIn(0, 2000)
+                it.setTargetGain(g)
+                it.enabled = g > 0
+                _loudnessGainMb.value = g
+            }
+
+            eq.enabled = settings.enabled
+            _enabled.value = settings.enabled
+        } catch (_: Exception) {}
+    }
+
+    private fun applyPreset(index: Int) {
+        val eq = equalizer ?: return
+        try {
+            eq.usePreset(index.toShort())
+            _preset.value = index
+            val numBands = eq.numberOfBands.toInt()
+            _bandLevels.value = (0 until numBands).map { eq.getBandLevel(it.toShort()) }
+        } catch (_: Exception) {}
+    }
+
+    fun release(clearSession: Boolean = true) {
         try { equalizer?.release() } catch (_: Exception) {}
         try { bassBoost?.release() } catch (_: Exception) {}
         try { virtualizer?.release() } catch (_: Exception) {}
@@ -88,7 +168,7 @@ object AudioEffectsManager {
         bassBoost = null
         virtualizer = null
         loudness = null
-        currentSessionId = -1
+        if (clearSession) currentSessionId = -1
         _enabled.value = false
         _available.value = false
     }
@@ -96,16 +176,16 @@ object AudioEffectsManager {
     fun setEnabled(on: Boolean) {
         equalizer?.enabled = on
         _enabled.value = on
+        persist { it.saveEnabled(appContext!!, on) }
     }
 
     fun setPreset(index: Int) {
-        val eq = equalizer ?: return
-        try {
-            eq.usePreset(index.toShort())
-            _preset.value = index
-            val numBands = eq.numberOfBands.toInt()
-            _bandLevels.value = (0 until numBands).map { eq.getBandLevel(it.toShort()) }
-        } catch (_: Exception) {}
+        applyPreset(index)
+        persist { it.savePreset(appContext!!, index) }
+        val bands = _bandLevels.value
+        if (bands.isNotEmpty()) {
+            persist { it.saveBands(appContext!!, bands) }
+        }
     }
 
     fun setBandLevel(band: Int, levelMb: Short) {
@@ -117,8 +197,11 @@ object AudioEffectsManager {
                 .coerceAtMost(range[1])
             eq.setBandLevel(band.toShort(), clamped)
             val numBands = eq.numberOfBands.toInt()
-            _bandLevels.value = (0 until numBands).map { eq.getBandLevel(it.toShort()) }
+            val newBands = (0 until numBands).map { eq.getBandLevel(it.toShort()) }
+            _bandLevels.value = newBands
             _preset.value = -1
+            persist { it.saveBands(appContext!!, newBands) }
+            persist { it.savePreset(appContext!!, -1) }
         } catch (_: Exception) {}
     }
 
@@ -129,6 +212,7 @@ object AudioEffectsManager {
             bb.setStrength(s)
             bb.enabled = s > 0
             _bassStrength.value = s.toInt()
+            persist { it.saveBass(appContext!!, s.toInt()) }
         } catch (_: Exception) {}
     }
 
@@ -139,6 +223,7 @@ object AudioEffectsManager {
             v.setStrength(s)
             v.enabled = s > 0
             _virtualizerStrength.value = s.toInt()
+            persist { it.saveVirtualizer(appContext!!, s.toInt()) }
         } catch (_: Exception) {}
     }
 
@@ -149,6 +234,7 @@ object AudioEffectsManager {
             l.setTargetGain(g)
             l.enabled = g > 0
             _loudnessGainMb.value = g
+            persist { it.saveLoudness(appContext!!, g) }
         } catch (_: Exception) {}
     }
 
@@ -158,7 +244,8 @@ object AudioEffectsManager {
             eq.usePreset(0)
             _preset.value = 0
             val numBands = eq.numberOfBands.toInt()
-            _bandLevels.value = (0 until numBands).map { eq.getBandLevel(it.toShort()) }
+            val bands = (0 until numBands).map { eq.getBandLevel(it.toShort()) }
+            _bandLevels.value = bands
             bassBoost?.setStrength(0)
             bassBoost?.enabled = false
             _bassStrength.value = 0
@@ -168,6 +255,17 @@ object AudioEffectsManager {
             loudness?.setTargetGain(0)
             loudness?.enabled = false
             _loudnessGainMb.value = 0
+
+            persist { it.savePreset(appContext!!, 0) }
+            persist { it.saveBands(appContext!!, bands) }
+            persist { it.saveBass(appContext!!, 0) }
+            persist { it.saveVirtualizer(appContext!!, 0) }
+            persist { it.saveLoudness(appContext!!, 0) }
         } catch (_: Exception) {}
+    }
+
+    private fun persist(block: suspend (EqPreferences) -> Unit) {
+        val ctx = appContext ?: return
+        scope.launch { block(EqPreferences) }
     }
 }
