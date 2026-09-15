@@ -47,7 +47,14 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     private val _repeatMode = MutableStateFlow(Player.REPEAT_MODE_OFF)
     val repeatMode: StateFlow<Int> = _repeatMode.asStateFlow()
 
+    private val _sleepRemainingMs = MutableStateFlow<Long?>(null)
+    val sleepRemainingMs: StateFlow<Long?> = _sleepRemainingMs.asStateFlow()
+
+    private val _playbackSpeed = MutableStateFlow(1f)
+    val playbackSpeed: StateFlow<Float> = _playbackSpeed.asStateFlow()
+
     private var tickerJob: Job? = null
+    private var sleepJob: Job? = null
 
     init {
         val token = SessionToken(
@@ -86,6 +93,10 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
 
         override fun onRepeatModeChanged(mode: Int) {
             _repeatMode.value = mode
+        }
+
+        override fun onPlaybackParametersChanged(playbackParameters: androidx.media3.common.PlaybackParameters) {
+            _playbackSpeed.value = playbackParameters.speed
         }
     }
 
@@ -151,8 +162,42 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         controller?.addMediaItem(song.toMediaItem())
     }
 
+    // ---------- Sleep timer ----------
+    fun startSleepTimer(minutes: Int) {
+        sleepJob?.cancel()
+        if (minutes <= 0) {
+            _sleepRemainingMs.value = null
+            return
+        }
+        val totalMs = minutes * 60_000L
+        sleepJob = viewModelScope.launch {
+            var remaining = totalMs
+            while (remaining > 0) {
+                _sleepRemainingMs.value = remaining
+                delay(1000)
+                remaining -= 1000
+            }
+            controller?.pause()
+            _sleepRemainingMs.value = null
+        }
+    }
+
+    fun cancelSleepTimer() {
+        sleepJob?.cancel()
+        sleepJob = null
+        _sleepRemainingMs.value = null
+    }
+
+    // ---------- Speed ----------
+    fun setPlaybackSpeed(speed: Float) {
+        val s = speed.coerceIn(0.5f, 2.0f)
+        controller?.setPlaybackSpeed(s)
+        _playbackSpeed.value = s
+    }
+
     override fun onCleared() {
         tickerJob?.cancel()
+        sleepJob?.cancel()
         controllerFuture?.let { MediaController.releaseFuture(it) }
         controller = null
         super.onCleared()

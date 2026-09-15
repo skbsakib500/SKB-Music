@@ -6,11 +6,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -21,6 +17,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.skb.music.ui.components.LyricsSheet
+import com.skb.music.ui.components.SleepTimerSheet
+import com.skb.music.ui.components.SpeedSheet
 import com.skb.music.viewmodel.PlayerViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -35,8 +34,13 @@ fun NowPlayingScreen(
     val duration by playerVm.durationMs.collectAsStateWithLifecycle()
     val shuffle by playerVm.shuffle.collectAsStateWithLifecycle()
     val repeat by playerVm.repeatMode.collectAsStateWithLifecycle()
+    val sleepRemaining by playerVm.sleepRemainingMs.collectAsStateWithLifecycle()
+    val speed by playerVm.playbackSpeed.collectAsStateWithLifecycle()
 
     var showEq by remember { mutableStateOf(false) }
+    var showSleep by remember { mutableStateOf(false) }
+    var showSpeed by remember { mutableStateOf(false) }
+    var showLyrics by remember { mutableStateOf(false) }
 
     Box(
         Modifier
@@ -63,8 +67,9 @@ fun NowPlayingScreen(
                 }
                 Spacer(Modifier.weight(1f))
                 Text(
-                    "NOW PLAYING",
-                    color = Color.Gray,
+                    if (sleepRemaining != null) "SLEEP ${formatTime(sleepRemaining!!)}"
+                    else "NOW PLAYING",
+                    color = if (sleepRemaining != null) Color(0xFF1DB954) else Color.Gray,
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -74,7 +79,7 @@ fun NowPlayingScreen(
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(16.dp))
 
             Box(
                 Modifier
@@ -100,7 +105,7 @@ fun NowPlayingScreen(
                 }
             }
 
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(24.dp))
 
             Text(
                 song?.title ?: "Nothing playing",
@@ -119,7 +124,7 @@ fun NowPlayingScreen(
                 overflow = TextOverflow.Ellipsis
             )
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(16.dp))
 
             Slider(
                 value = position.toFloat().coerceIn(0f, duration.toFloat().coerceAtLeast(1f)),
@@ -139,7 +144,7 @@ fun NowPlayingScreen(
                 Text(formatTime(duration), color = Color.Gray, style = MaterialTheme.typography.bodySmall)
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(12.dp))
 
             Row(
                 Modifier.fillMaxWidth(),
@@ -183,11 +188,69 @@ fun NowPlayingScreen(
                     )
                 }
             }
+
+            Spacer(Modifier.height(12.dp))
+
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                SmallToolButton(
+                    icon = Icons.Default.Subtitles,
+                    label = "Lyrics",
+                    active = false,
+                    onClick = { showLyrics = true }
+                )
+                SmallToolButton(
+                    icon = Icons.Default.Timer,
+                    label = if (sleepRemaining != null) formatTime(sleepRemaining!!) else "Sleep",
+                    active = sleepRemaining != null,
+                    onClick = { showSleep = true }
+                )
+                SmallToolButton(
+                    icon = Icons.Default.Speed,
+                    label = "${trimSpeed(speed)}x",
+                    active = speed != 1f,
+                    onClick = { showSpeed = true }
+                )
+            }
         }
     }
 
-    if (showEq) {
-        EqualizerSheet(onDismiss = { showEq = false })
+    if (showEq) EqualizerSheet(onDismiss = { showEq = false })
+    if (showSleep) SleepTimerSheet(
+        remainingMs = sleepRemaining,
+        onPick = { playerVm.startSleepTimer(it) },
+        onCancel = { playerVm.cancelSleepTimer() },
+        onDismiss = { showSleep = false }
+    )
+    if (showSpeed) SpeedSheet(
+        current = speed,
+        onPick = { playerVm.setPlaybackSpeed(it) },
+        onDismiss = { showSpeed = false }
+    )
+    if (showLyrics) LyricsSheet(playerVm = playerVm, onDismiss = { showLyrics = false })
+}
+
+@Composable
+private fun SmallToolButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    active: Boolean,
+    onClick: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(if (active) Color(0xFF1DB954).copy(alpha = 0.15f) else Color.Transparent)
+            .padding(horizontal = 14.dp, vertical = 6.dp)
+    ) {
+        IconButton(onClick = onClick) {
+            Icon(icon, contentDescription = label, tint = if (active) Color(0xFF1DB954) else Color.White)
+        }
+        Text(label, color = if (active) Color(0xFF1DB954) else Color.Gray, style = MaterialTheme.typography.labelSmall)
     }
 }
 
@@ -196,4 +259,8 @@ private fun formatTime(ms: Long): String {
     val m = totalSec / 60
     val s = totalSec % 60
     return "%d:%02d".format(m, s)
+}
+
+private fun trimSpeed(s: Float): String {
+    return if (s == s.toInt().toFloat()) s.toInt().toString() else s.toString()
 }

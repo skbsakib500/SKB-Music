@@ -23,6 +23,7 @@ import coil.compose.AsyncImage
 import com.skb.music.data.Song
 import com.skb.music.ui.components.SongInfoDialog
 import com.skb.music.ui.components.SongMenuSheet
+import com.skb.music.ui.screens.BrowseScreen
 import com.skb.music.ui.screens.FavoritesScreen
 import com.skb.music.ui.screens.LibraryScreen
 import com.skb.music.ui.screens.NowPlayingScreen
@@ -31,7 +32,7 @@ import com.skb.music.ui.screens.RecentsScreen
 import com.skb.music.viewmodel.LibraryViewModel
 import com.skb.music.viewmodel.PlayerViewModel
 
-private enum class Tab { Songs, Recents, Favorites, Playlists }
+private enum class Tab { Songs, Browse, Recents, Favorites, Playlists }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -81,6 +82,12 @@ fun SkbApp(
                         label = { Text("Songs") }
                     )
                     NavigationBarItem(
+                        selected = tab == Tab.Browse,
+                        onClick = { tab = Tab.Browse },
+                        icon = { Icon(Icons.Default.Album, null) },
+                        label = { Text("Browse") }
+                    )
+                    NavigationBarItem(
                         selected = tab == Tab.Recents,
                         onClick = { tab = Tab.Recents },
                         icon = { Icon(Icons.Default.History, null) },
@@ -90,13 +97,13 @@ fun SkbApp(
                         selected = tab == Tab.Favorites,
                         onClick = { tab = Tab.Favorites },
                         icon = { Icon(Icons.Default.Favorite, null) },
-                        label = { Text("Favorites") }
+                        label = { Text("Favs") }
                     )
                     NavigationBarItem(
                         selected = tab == Tab.Playlists,
                         onClick = { tab = Tab.Playlists },
                         icon = { Icon(Icons.Default.PlaylistPlay, null) },
-                        label = { Text("Playlists") }
+                        label = { Text("Lists") }
                     )
                 }
             }
@@ -110,21 +117,10 @@ fun SkbApp(
                 .background(Color.Black)
         ) {
             when (tab) {
-                Tab.Songs -> LibraryScreen(
-                    libraryVm = libraryVm,
-                    playerVm = playerVm,
-                    onSongMenu = { songMenuFor = it }
-                )
-                Tab.Recents -> RecentsScreen(
-                    libraryVm = libraryVm,
-                    playerVm = playerVm,
-                    onSongMenu = { songMenuFor = it }
-                )
-                Tab.Favorites -> FavoritesScreen(
-                    libraryVm = libraryVm,
-                    playerVm = playerVm,
-                    onSongMenu = { songMenuFor = it }
-                )
+                Tab.Songs -> LibraryScreen(libraryVm, playerVm, onSongMenu = { songMenuFor = it })
+                Tab.Browse -> BrowseScreen(libraryVm, playerVm)
+                Tab.Recents -> RecentsScreen(libraryVm, playerVm, onSongMenu = { songMenuFor = it })
+                Tab.Favorites -> FavoritesScreen(libraryVm, playerVm, onSongMenu = { songMenuFor = it })
                 Tab.Playlists -> PlaylistsScreen(libraryVm)
             }
         }
@@ -138,7 +134,6 @@ fun SkbApp(
         NowPlayingScreen(playerVm = playerVm, onClose = { showNowPlaying = false })
     }
 
-    // ---- Long-press menu ----
     songMenuFor?.let { song ->
         SongMenuSheet(
             song = song,
@@ -164,7 +159,6 @@ fun SkbApp(
         )
     }
 
-    // ---- Add to playlist sheet ----
     playlistForSong?.let { song ->
         AddToPlaylistSheet(
             song = song,
@@ -173,7 +167,6 @@ fun SkbApp(
         )
     }
 
-    // ---- Song info dialog ----
     infoForSong?.let { song ->
         SongInfoDialog(song = song, onDismiss = { infoForSong = null })
     }

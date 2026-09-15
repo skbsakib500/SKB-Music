@@ -16,7 +16,8 @@ class MediaStoreScanner(private val context: Context) {
             MediaStore.Audio.Media.ARTIST,
             MediaStore.Audio.Media.ALBUM,
             MediaStore.Audio.Media.DURATION,
-            MediaStore.Audio.Media.ALBUM_ID
+            MediaStore.Audio.Media.ALBUM_ID,
+            MediaStore.Audio.Media.DATA
         )
         val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0"
         val sortOrder = "${MediaStore.Audio.Media.TITLE} ASC"
@@ -28,6 +29,7 @@ class MediaStoreScanner(private val context: Context) {
             val albumCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
             val durCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
             val albumIdCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
+            val dataCol = cursor.getColumnIndex(MediaStore.Audio.Media.DATA)
 
             while (cursor.moveToNext()) {
                 val id = cursor.getLong(idCol)
@@ -36,6 +38,7 @@ class MediaStoreScanner(private val context: Context) {
                 val artUri = ContentUris.withAppendedId(
                     Uri.parse("content://media/external/audio/albumart"), albumId
                 )
+                val dataPath = if (dataCol >= 0) cursor.getString(dataCol) else null
 
                 songs += Song(
                     id = id,
@@ -44,7 +47,8 @@ class MediaStoreScanner(private val context: Context) {
                     album = cursor.getString(albumCol) ?: "Unknown",
                     duration = cursor.getLong(durCol),
                     uri = uri,
-                    albumArtUri = artUri
+                    albumArtUri = artUri,
+                    dataPath = dataPath
                 )
             }
         }
