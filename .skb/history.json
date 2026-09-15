@@ -1,0 +1,20 @@
+{
+  "schema": "skb/v1",
+  "releases": [
+    {"version":"1.1.0","date":"2026-09-15","tag":null,"commit":"8414471","highlights":["Full project with CI","MediaStore scan","Library tab","Basic playback + queue"]},
+    {"version":"1.2.0","date":"2026-09-15","tag":null,"commit":"6ba185b","highlights":["Long-press menu","Play next/queue","Recents screen","Song info dialog"]},
+    {"version":"2.0.0-alpha1","date":"2026-09-15","tag":null,"commit":"5aafbc2","highlights":["Equalizer, bass boost","Virtualizer, loudness enhancer"]},
+    {"version":"2.0.0-alpha2","date":"2026-09-15","tag":null,"commit":"45f10ef","highlights":["EQ settings via DataStore"]},
+    {"version":"2.1.0","date":"2026-09-15","tag":null,"commit":"5454d1d","highlights":["Sleep timer","Playback speed","Lyrics (.lrc + embedded)","Browse tab","Custom notification"]},
+    {"version":"2.2.0","date":"2026-09-15","tag":null,"commit":"687519d","highlights":["Spectrum visualizer","Dynamic gradient (palette)","Notification actions","ReplayGain (session-aware)","Listening stats"]}
+  ],
+  "milestones": [
+    {"name":"Security incident resolved","date":"2026-09-16","note":"GitHub PAT leaked in remote URL — revoked + sanitized"},
+    {"name":"Schema v1 adopted","date":"2026-09-16","note":"Migrated to SKB Schema v1"}
+  ],
+  "events": [
+    {"type":"created","date":"2026-09-15","summary":"SKB-Music initialized"},
+    {"type":"security-incident","date":"2026-09-16","summary":"PAT exposed in .git/config remote URL — revoked"},
+    {"type":"major-change","date":"2026-09-15","summary":"v2.2 visualizer + ReplayGain + stats"}
+  ]
+}

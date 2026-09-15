@@ -1,22 +1,40 @@
 {
-  "skb_version": "0.1.0",
-  "project_id": "skb-music",
-  "display_name": "SKB Music",
+  "schema": "skb/v1",
+  "id": "skb-music",
+  "name": "SKB Music",
   "type": "android-app",
   "subtype": "media-music-player",
-  "package": "com.skb.music",
   "version": "2.2.0",
-  "version_code": 3,
   "status": "active",
-  "author": {"name":"SKB Dev","email":"msakibalmhamud5@gmail.com","github":"skbsakib500"},
-  "repo": {"remote":"https://github.com/skbsakib500/SKB-Music.git","branch":"main"},
-  "stack": {
-    "language":["kotlin"],
-    "ui":["jetpack-compose-2024.09.02","material3"],
-    "media":["androidx-media3-1.4.1"],
-    "storage":["room-2.6.1","datastore-1.1.1"],
-    "build":["agp-8.5.2","jdk-17"]
+  "author": {
+    "name": "SKB Dev",
+    "email": "msakibalmhamud5@gmail.com",
+    "github": "skbsakib500"
   },
+  "repo": {
+    "remote": "https://github.com/skbsakib500/SKB-Music.git",
+    "branch": "main"
+  },
+  "stack": [
+    "kotlin",
+    "jetpack-compose-2024.09.02",
+    "material3",
+    "androidx-media3-1.4.1",
+    "room-2.6.1",
+    "datastore-1.1.1",
+    "coil-2.7.0",
+    "palette-ktx",
+    "navigation-compose-2.8.0",
+    "agp-8.5.2",
+    "jdk-17"
+  ],
+  "companions": [
+    "skb-dev",
+    "skb-player",
+    "skb-agent-mimi",
+    "skb-mimi-android"
+  ],
+  "purpose": "Privacy-first local music player — Room, MVVM, dynamic color",
   "created": "2026-09-15",
   "last_touched": "2026-09-16"
 }

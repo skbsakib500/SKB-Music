@@ -1,9 +1,17 @@
 {
-  "as_of": "2026-09-16",
-  "git": {"branch":"main","head":"ca0a3b9","clean":true},
-  "code": {"kotlin_files":36,"screens":8,"components":8},
-  "security": {"incident_20260916":"PAT leaked in remote, revoked + sanitized"},
-  "current_focus": "v2.3 docs + folder cleanup",
-  "next_focus": "v3.0 metadata editing",
+  "schema": "skb/v1",
+  "current_focus": "v2.3 — docs + empty folder cleanup",
+  "next_focus": "v3.0 — metadata editing (ID3, art)",
+  "progress": 55,
+  "build": "ready",
+  "tests": "none",
+  "git": {
+    "branch": "main",
+    "head": "07334c5",
+    "head_subject": "docs(v2.3): memory docs + security incident log",
+    "clean": true,
+    "ahead_of_remote": 0,
+    "last_tag": null
+  },
   "known_issues_open": ["KI-M01","KI-M02","KI-M04","KI-M05","KI-M06","KI-M07"]
 }
