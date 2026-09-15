@@ -1,30 +1,9 @@
 {
   "as_of": "2026-09-16",
-  "git": {
-    "branch": "main",
-    "head": "ca0a3b9",
-    "head_subject": "fix: move visualizer into AudioEffectsManager (session-aware)",
-    "clean": true,
-    "last_tag": null
-  },
-  "code": {
-    "kotlin_files": 36,
-    "screens": 8,
-    "components": 8,
-    "viewmodels": "multiple",
-    "empty_folders": ["domain/","library/","playlist/","lyrics/","docs/"]
-  },
-  "features": {
-    "v1_1_base": "released",
-    "v1_2_library": "released",
-    "v2_0_audio_effects": "released",
-    "v2_1_lyrics_sleep": "released",
-    "v2_2_visual_stats": "released"
-  },
-  "security": {
-    "incident_20260916": "PAT leaked in remote URL — revoked, remote sanitized"
-  },
-  "current_focus": "v2.3 stabilization — docs, empty folder cleanup",
-  "next_focus": "v3.0 — metadata editing",
+  "git": {"branch":"main","head":"ca0a3b9","clean":true},
+  "code": {"kotlin_files":36,"screens":8,"components":8},
+  "security": {"incident_20260916":"PAT leaked in remote, revoked + sanitized"},
+  "current_focus": "v2.3 docs + folder cleanup",
+  "next_focus": "v3.0 metadata editing",
   "known_issues_open": ["KI-M01","KI-M02","KI-M04","KI-M05","KI-M06","KI-M07"]
 }
