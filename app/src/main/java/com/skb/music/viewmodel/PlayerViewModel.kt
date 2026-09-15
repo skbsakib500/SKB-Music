@@ -14,6 +14,7 @@ import com.skb.music.SkbApplication
 import com.skb.music.data.Song
 import com.skb.music.data.toMediaItem
 import com.skb.music.data.toSong
+import com.skb.music.equalizer.AudioEffectsManager
 import com.skb.music.equalizer.EqPreferences
 import com.skb.music.playback.PlaybackService
 import com.skb.music.playback.ReplayGainManager
@@ -56,19 +57,14 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     private val _playbackSpeed = MutableStateFlow(1f)
     val playbackSpeed: StateFlow<Float> = _playbackSpeed.asStateFlow()
 
-    private val _bassLevel = MutableStateFlow(0f)
-    val bassLevel: StateFlow<Float> = _bassLevel.asStateFlow()
-
-    private val _midLevel = MutableStateFlow(0f)
-    val midLevel: StateFlow<Float> = _midLevel.asStateFlow()
-
-    private val _trebleLevel = MutableStateFlow(0f)
-    val trebleLevel: StateFlow<Float> = _trebleLevel.asStateFlow()
+    // Visualizer flow driven by AudioEffectsManager (session lives there)
+    val bassLevel: StateFlow<Float> = AudioEffectsManager.bassLevel
+    val midLevel: StateFlow<Float> = AudioEffectsManager.midLevel
+    val trebleLevel: StateFlow<Float> = AudioEffectsManager.trebleLevel
 
     private var tickerJob: Job? = null
     private var sleepJob: Job? = null
     private var listenTrackJob: Job? = null
-    private var visualizerJob: Job? = null
 
     private var lastListenedSongId: Long? = null
     private var lastPositionMs: Long = 0L
@@ -91,6 +87,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     private val playerListener = object : Player.Listener {
         override fun onIsPlayingChanged(playing: Boolean) {
             _isPlaying.value = playing
+            if (playing) AudioEffectsManager.startVisualizer() else AudioEffectsManager.stopVisualizer()
         }
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
@@ -105,7 +102,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                 lastListenedSongId = song.id
                 viewModelScope.launch { repo.markPlayed(song.id) }
                 applyReplayGain(mediaItem)
-                startVisualizerIfNeeded()
+                AudioEffectsManager.startVisualizer()
             }
             syncFromController()
         }
@@ -114,7 +111,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             syncFromController()
             if (state == Player.STATE_ENDED || state == Player.STATE_IDLE) {
                 flushListenTime()
-                stopVisualizer()
+                AudioEffectsManager.stopVisualizer()
             }
         }
 
@@ -193,95 +190,6 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         lastPositionMs = 0L
     }
 
-    // ---------------- Visualizer ----------------
-    private fun startVisualizerIfNeeded() {
-        stopVisualizer()
-        val c = controller ?: return
-        val sessionId = c.audioSessionId
-        if (sessionId <= 0) return
-
-        visualizerJob = viewModelScope.launch {
-            val v = try {
-                android.media.audiofx.Visualizer(sessionId)
-            } catch (_: Exception) {
-                null
-            } ?: return@launch
-
-            try {
-                v.captureSize = android.media.audiofx.Visualizer.getCaptureSizeRange()[0]
-                v.setDataCaptureListener(
-                    object : android.media.audiofx.Visualizer.OnDataCaptureListener {
-                        override fun onWaveFormDataCapture(
-                            vis: android.media.audiofx.Visualizer?,
-                            waveform: ByteArray?,
-                            samplingRate: Int
-                        ) {
-                            if (waveform == null || waveform.isEmpty()) return
-                            var sum = 0.0
-                            for (b in waveform) sum += kotlin.math.abs(b.toInt())
-                            val avg = (sum / waveform.size) / 128.0
-                            val level = avg.coerceIn(0.0, 1.0).toFloat()
-                            _bassLevel.value = level
-                            _midLevel.value = level
-                            _trebleLevel.value = level
-                        }
-
-                        override fun onFftDataCapture(
-                            vis: android.media.audiofx.Visualizer?,
-                            fft: ByteArray?,
-                            samplingRate: Int
-                        ) {
-                            if (fft == null || fft.size < 6) return
-                            val n = fft.size / 2
-                            var low = 0.0
-                            var mid = 0.0
-                            var high = 0.0
-                            var lowC = 0
-                            var midC = 0
-                            var highC = 0
-                            var i = 2
-                            while (i + 1 < fft.size) {
-                                val re = fft[i].toInt()
-                                val im = fft[i + 1].toInt()
-                                val mag = kotlin.math.hypot(re.toDouble(), im.toDouble())
-                                val idx = (i - 2) / 2
-                                when {
-                                    idx < n / 3 -> { low += mag; lowC++ }
-                                    idx < 2 * n / 3 -> { mid += mag; midC++ }
-                                    else -> { high += mag; highC++ }
-                                }
-                                i += 2
-                            }
-                            val maxMag = (n * 128.0).coerceAtLeast(1.0)
-                            _bassLevel.value = ((low / lowC.coerceAtLeast(1)) / maxMag * 8).coerceIn(0.0, 1.0).toFloat()
-                            _midLevel.value = ((mid / midC.coerceAtLeast(1)) / maxMag * 8).coerceIn(0.0, 1.0).toFloat()
-                            _trebleLevel.value = ((high / highC.coerceAtLeast(1)) / maxMag * 8).coerceIn(0.0, 1.0).toFloat()
-                        }
-                    },
-                    android.media.audiofx.Visualizer.getMaxCaptureRate() / 2,
-                    true,
-                    true
-                )
-                v.enabled = true
-                while (true) {
-                    delay(50)
-                }
-            } catch (_: Exception) {
-            } finally {
-                try { v.release() } catch (_: Exception) {}
-            }
-        }
-    }
-
-    private fun stopVisualizer() {
-        visualizerJob?.cancel()
-        visualizerJob = null
-        _bassLevel.value = 0f
-        _midLevel.value = 0f
-        _trebleLevel.value = 0f
-    }
-
-    // ---------------- Actions ----------------
     fun playSongs(songs: List<Song>, startIndex: Int = 0) {
         if (songs.isEmpty()) return
         val items = songs.map { it.toMediaItem() }
@@ -360,7 +268,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         tickerJob?.cancel()
         sleepJob?.cancel()
         listenTrackJob?.cancel()
-        stopVisualizer()
+        AudioEffectsManager.stopVisualizer()
         controllerFuture?.let { MediaController.releaseFuture(it) }
         controller = null
         super.onCleared()
