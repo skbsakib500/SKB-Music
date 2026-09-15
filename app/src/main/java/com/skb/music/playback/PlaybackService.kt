@@ -4,10 +4,12 @@ import android.app.PendingIntent
 import android.content.Intent
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.skb.music.MainActivity
+import com.skb.music.equalizer.AudioEffectsManager
 
 class PlaybackService : MediaSessionService() {
 
@@ -26,6 +28,14 @@ class PlaybackService : MediaSessionService() {
             )
             .setHandleAudioBecomingNoisy(true)
             .build()
+
+        player.addListener(object : Player.Listener {
+            override fun onAudioSessionIdChanged(audioSessionId: Int) {
+                if (audioSessionId != C.AUDIO_SESSION_ID_UNSET && audioSessionId > 0) {
+                    AudioEffectsManager.attach(audioSessionId)
+                }
+            }
+        })
 
         val sessionActivity = PendingIntent.getActivity(
             this, 0,
@@ -46,6 +56,7 @@ class PlaybackService : MediaSessionService() {
             release()
             mediaSession = null
         }
+        AudioEffectsManager.release()
         super.onDestroy()
     }
 }

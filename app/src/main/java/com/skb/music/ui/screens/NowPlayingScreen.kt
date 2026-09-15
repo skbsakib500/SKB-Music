@@ -8,6 +8,9 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,6 +35,8 @@ fun NowPlayingScreen(
     val duration by playerVm.durationMs.collectAsStateWithLifecycle()
     val shuffle by playerVm.shuffle.collectAsStateWithLifecycle()
     val repeat by playerVm.repeatMode.collectAsStateWithLifecycle()
+
+    var showEq by remember { mutableStateOf(false) }
 
     Box(
         Modifier
@@ -64,8 +69,8 @@ fun NowPlayingScreen(
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(Modifier.weight(1f))
-                IconButton(onClick = { }) {
-                    Icon(Icons.Default.MoreVert, "More", tint = Color.White)
+                IconButton(onClick = { showEq = true }) {
+                    Icon(Icons.Default.Equalizer, "Equalizer", tint = Color.White)
                 }
             }
 
@@ -179,6 +184,10 @@ fun NowPlayingScreen(
                 }
             }
         }
+    }
+
+    if (showEq) {
+        EqualizerSheet(onDismiss = { showEq = false })
     }
 }
 
