@@ -28,3 +28,11 @@ data class RecentEntity(
     @PrimaryKey val songId: Long,
     val playedAt: Long
 )
+
+@Entity(tableName = "stats")
+data class StatEntity(
+    @PrimaryKey val songId: Long,
+    val playCount: Int,
+    val totalMs: Long,
+    val lastPlayedAt: Long
+)

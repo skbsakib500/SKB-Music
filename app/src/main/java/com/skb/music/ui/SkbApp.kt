@@ -29,10 +29,11 @@ import com.skb.music.ui.screens.LibraryScreen
 import com.skb.music.ui.screens.NowPlayingScreen
 import com.skb.music.ui.screens.PlaylistsScreen
 import com.skb.music.ui.screens.RecentsScreen
+import com.skb.music.ui.screens.StatsScreen
 import com.skb.music.viewmodel.LibraryViewModel
 import com.skb.music.viewmodel.PlayerViewModel
 
-private enum class Tab { Songs, Browse, Recents, Favorites, Playlists }
+private enum class Tab { Songs, Browse, Recents, Favorites, Playlists, Stats }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -105,6 +106,12 @@ fun SkbApp(
                         icon = { Icon(Icons.Default.PlaylistPlay, null) },
                         label = { Text("Lists") }
                     )
+                    NavigationBarItem(
+                        selected = tab == Tab.Stats,
+                        onClick = { tab = Tab.Stats },
+                        icon = { Icon(Icons.Default.BarChart, null) },
+                        label = { Text("Stats") }
+                    )
                 }
             }
         },
@@ -122,6 +129,7 @@ fun SkbApp(
                 Tab.Recents -> RecentsScreen(libraryVm, playerVm, onSongMenu = { songMenuFor = it })
                 Tab.Favorites -> FavoritesScreen(libraryVm, playerVm, onSongMenu = { songMenuFor = it })
                 Tab.Playlists -> PlaylistsScreen(libraryVm)
+                Tab.Stats -> StatsScreen(libraryVm)
             }
         }
     }
@@ -193,9 +201,7 @@ private fun MiniPlayerBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
-                Modifier
-                    .size(44.dp)
-                    .background(Color(0xFF141414)),
+                Modifier.size(44.dp).background(Color(0xFF141414)),
                 contentAlignment = Alignment.Center
             ) {
                 if (song.albumArtUri != null) {

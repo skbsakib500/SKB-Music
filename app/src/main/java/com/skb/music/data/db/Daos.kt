@@ -53,3 +53,30 @@ interface RecentDao {
     @Query("DELETE FROM recent")
     suspend fun clear()
 }
+
+@Dao
+interface StatDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(stat: StatEntity)
+
+    @Query("SELECT * FROM stats WHERE songId = :songId LIMIT 1")
+    suspend fun get(songId: Long): StatEntity?
+
+    @Query("SELECT * FROM stats ORDER BY playCount DESC LIMIT :limit")
+    fun topByCount(limit: Int): Flow<List<StatEntity>>
+
+    @Query("SELECT * FROM stats ORDER BY lastPlayedAt DESC LIMIT :limit")
+    fun recentlyPlayed(limit: Int): Flow<List<StatEntity>>
+
+    @Query("SELECT SUM(playCount) FROM stats")
+    fun totalPlays(): Flow<Int?>
+
+    @Query("SELECT SUM(totalMs) FROM stats")
+    fun totalListenMs(): Flow<Long?>
+
+    @Query("SELECT COUNT(*) FROM stats")
+    fun uniqueSongs(): Flow<Int>
+
+    @Query("DELETE FROM stats")
+    suspend fun clear()
+}

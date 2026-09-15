@@ -1,5 +1,8 @@
 package com.skb.music.ui.screens
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -12,13 +15,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.skb.music.ui.components.LyricsSheet
+import com.skb.music.ui.components.PaletteUtil
 import com.skb.music.ui.components.SleepTimerSheet
+import com.skb.music.ui.components.SpectrumVisualizer
 import com.skb.music.ui.components.SpeedSheet
 import com.skb.music.viewmodel.PlayerViewModel
 
@@ -28,6 +34,8 @@ fun NowPlayingScreen(
     playerVm: PlayerViewModel,
     onClose: () -> Unit
 ) {
+    val ctx = LocalContext.current
+
     val song by playerVm.currentSong.collectAsStateWithLifecycle()
     val isPlaying by playerVm.isPlaying.collectAsStateWithLifecycle()
     val position by playerVm.positionMs.collectAsStateWithLifecycle()
@@ -36,18 +44,32 @@ fun NowPlayingScreen(
     val repeat by playerVm.repeatMode.collectAsStateWithLifecycle()
     val sleepRemaining by playerVm.sleepRemainingMs.collectAsStateWithLifecycle()
     val speed by playerVm.playbackSpeed.collectAsStateWithLifecycle()
+    val bassLevel by playerVm.bassLevel.collectAsStateWithLifecycle()
+    val midLevel by playerVm.midLevel.collectAsStateWithLifecycle()
+    val trebleLevel by playerVm.trebleLevel.collectAsStateWithLifecycle()
 
     var showEq by remember { mutableStateOf(false) }
     var showSleep by remember { mutableStateOf(false) }
     var showSpeed by remember { mutableStateOf(false) }
     var showLyrics by remember { mutableStateOf(false) }
 
+    var gradient by remember { mutableStateOf<PaletteUtil.Gradient?>(null) }
+    LaunchedEffect(song?.albumArtUri) {
+        gradient = PaletteUtil.extract(ctx, song?.albumArtUri)
+    }
+
+    val topColor by animateColorAsState(
+        targetValue = gradient?.top ?: Color(0xFF0A0A0A),
+        animationSpec = tween(600),
+        label = "topColor"
+    )
+
     Box(
         Modifier
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    listOf(Color(0xFF0A0A0A), Color.Black, Color.Black)
+                    listOf(topColor, Color.Black, Color.Black)
                 )
             )
     ) {
@@ -58,17 +80,13 @@ fun NowPlayingScreen(
                 .systemBarsPadding(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Row(
-                Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onClose) {
                     Icon(Icons.Default.KeyboardArrowDown, "Close", tint = Color.White)
                 }
                 Spacer(Modifier.weight(1f))
                 Text(
-                    if (sleepRemaining != null) "SLEEP ${formatTime(sleepRemaining!!)}"
-                    else "NOW PLAYING",
+                    if (sleepRemaining != null) "SLEEP ${formatTime(sleepRemaining!!)}" else "NOW PLAYING",
                     color = if (sleepRemaining != null) Color(0xFF1DB954) else Color.Gray,
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold
@@ -91,21 +109,17 @@ fun NowPlayingScreen(
             ) {
                 val art = song?.albumArtUri
                 if (art != null) {
-                    AsyncImage(
-                        model = art,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize()
-                    )
+                    AsyncImage(model = art, contentDescription = null, modifier = Modifier.fillMaxSize())
                 } else {
-                    Icon(
-                        Icons.Default.MusicNote, null,
-                        tint = Color(0xFF1DB954),
-                        modifier = Modifier.size(96.dp)
-                    )
+                    Icon(Icons.Default.MusicNote, null, tint = Color(0xFF1DB954), modifier = Modifier.size(96.dp))
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(20.dp))
+
+            SpectrumVisualizer(bass = bassLevel, mid = midLevel, treble = trebleLevel)
+
+            Spacer(Modifier.height(16.dp))
 
             Text(
                 song?.title ?: "Nothing playing",
@@ -144,7 +158,7 @@ fun NowPlayingScreen(
                 Text(formatTime(duration), color = Color.Gray, style = MaterialTheme.typography.bodySmall)
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp))
 
             Row(
                 Modifier.fillMaxWidth(),
@@ -152,10 +166,7 @@ fun NowPlayingScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = { playerVm.toggleShuffle() }) {
-                    Icon(
-                        Icons.Default.Shuffle, "Shuffle",
-                        tint = if (shuffle) Color(0xFF1DB954) else Color.Gray
-                    )
+                    Icon(Icons.Default.Shuffle, "Shuffle", tint = if (shuffle) Color(0xFF1DB954) else Color.Gray)
                 }
                 IconButton(onClick = { playerVm.previous() }) {
                     Icon(Icons.Default.SkipPrevious, "Prev", tint = Color.White, modifier = Modifier.size(40.dp))
@@ -163,9 +174,7 @@ fun NowPlayingScreen(
                 FilledIconButton(
                     onClick = { playerVm.togglePlayPause() },
                     modifier = Modifier.size(72.dp),
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = Color(0xFF1DB954)
-                    )
+                    colors = IconButtonDefaults.filledIconButtonColors(containerColor = Color(0xFF1DB954))
                 ) {
                     Icon(
                         imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
@@ -182,38 +191,24 @@ fun NowPlayingScreen(
                         1 -> Icons.Default.RepeatOne
                         else -> Icons.Default.Repeat
                     }
-                    Icon(
-                        icon, "Repeat",
-                        tint = if (repeat != 0) Color(0xFF1DB954) else Color.Gray
-                    )
+                    Icon(icon, "Repeat", tint = if (repeat != 0) Color(0xFF1DB954) else Color.Gray)
                 }
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp))
 
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                SmallToolButton(Icons.Default.Subtitles, "Lyrics", false) { showLyrics = true }
                 SmallToolButton(
-                    icon = Icons.Default.Subtitles,
-                    label = "Lyrics",
-                    active = false,
-                    onClick = { showLyrics = true }
-                )
-                SmallToolButton(
-                    icon = Icons.Default.Timer,
-                    label = if (sleepRemaining != null) formatTime(sleepRemaining!!) else "Sleep",
-                    active = sleepRemaining != null,
-                    onClick = { showSleep = true }
-                )
-                SmallToolButton(
-                    icon = Icons.Default.Speed,
-                    label = "${trimSpeed(speed)}x",
-                    active = speed != 1f,
-                    onClick = { showSpeed = true }
-                )
+                    Icons.Default.Timer,
+                    if (sleepRemaining != null) formatTime(sleepRemaining!!) else "Sleep",
+                    sleepRemaining != null
+                ) { showSleep = true }
+                SmallToolButton(Icons.Default.Speed, "${trimSpeed(speed)}x", speed != 1f) { showSpeed = true }
             }
         }
     }
@@ -261,6 +256,5 @@ private fun formatTime(ms: Long): String {
     return "%d:%02d".format(m, s)
 }
 
-private fun trimSpeed(s: Float): String {
-    return if (s == s.toInt().toFloat()) s.toInt().toString() else s.toString()
-}
+private fun trimSpeed(s: Float): String =
+    if (s == s.toInt().toFloat()) s.toInt().toString() else s.toString()

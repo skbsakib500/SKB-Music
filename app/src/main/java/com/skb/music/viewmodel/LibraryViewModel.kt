@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.skb.music.SkbApplication
 import com.skb.music.data.Song
 import com.skb.music.data.db.PlaylistEntity
+import com.skb.music.data.db.StatEntity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -52,6 +53,18 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     val playlists: StateFlow<List<PlaylistEntity>> =
         repo.playlists().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    val topStats: StateFlow<List<StatEntity>> =
+        repo.topByCount(25).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val totalPlays: StateFlow<Int?> =
+        repo.totalPlays().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
+    val totalListenMs: StateFlow<Long?> =
+        repo.totalListenMs().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0L)
+
+    val uniqueSongs: StateFlow<Int> =
+        repo.uniqueSongs().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
     fun refresh() {
         viewModelScope.launch {
             _loading.value = true
@@ -85,4 +98,8 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
             val map = songs.associateBy { it.id }
             ids.mapNotNull { map[it] }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun clearStats() {
+        viewModelScope.launch { repo.clearStats() }
+    }
 }

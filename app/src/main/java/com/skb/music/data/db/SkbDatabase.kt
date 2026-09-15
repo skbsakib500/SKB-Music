@@ -10,15 +10,17 @@ import androidx.room.RoomDatabase
         FavoriteEntity::class,
         PlaylistEntity::class,
         PlaylistSongEntity::class,
-        RecentEntity::class
+        RecentEntity::class,
+        StatEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class SkbDatabase : RoomDatabase() {
     abstract fun favoriteDao(): FavoriteDao
     abstract fun playlistDao(): PlaylistDao
     abstract fun recentDao(): RecentDao
+    abstract fun statDao(): StatDao
 
     companion object {
         @Volatile private var INSTANCE: SkbDatabase? = null
